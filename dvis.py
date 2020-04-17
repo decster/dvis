@@ -12,6 +12,7 @@ except ImportError:
         # Python 3 compatibility
         from io import BytesIO as StringIO
 
+
 def RGB(c):
     if isinstance(c, int):
         return (((c & 0xff0000) >> 16) / 255.0, ((c & 0xff00) >> 8) / 255.0, (c & 0xff) / 255.0)
@@ -128,6 +129,9 @@ class Element:
             self.fill = RGB(self.fill)
         self.border = kw.get('border', 2)
 
+    def get_size(self):
+        return None, None # width, height
+
     def draw_contour(self, ctx):
         pass
         
@@ -158,6 +162,9 @@ class Box(Element):
         self.w = w
         self.h = h
 
+    def get_size(self):
+        return self.w, self.h
+
     def draw_contour(self, ctx):
         ctx.rectangle(self.x-self.w/2, self.y-self.h/2, self.w, self.h)
 
@@ -166,7 +173,10 @@ class Circle(Element):
     def __init__(self, r, **kw):
         super(Circle, self).__init__(**kw)
         self.r = r
-        
+
+    def get_size(self):
+        return self.r * 2, self.r * 2
+
     def draw_contour(self, ctx):
         ctx.move_to(self.x+self.r,self.y)
         ctx.arc(self.x,self.y,self.r,0, 2*np.pi)
@@ -180,20 +190,29 @@ class Text(Element):
         self.text = str(text)
         self.ff = 'Noto Sans CJK SC'
         self.fontsize = fontsize
+        self.w = 0
+        self.h = self.fontsize
+
+    def get_size(self, ctx):
+        return self.w, self.h
+
     def draw_contour(self, ctx):
         ctx.select_font_face(self.ff)
         ctx.set_font_size(self.fontsize)
         xbear, ybear, w, h, xadvance, yadvance = ctx.text_extents(self.text)
+        self.w = w
+        self.h = h
         x = self.x - w / 2 - xbear
         y = self.y - h / 2 - ybear
         ctx.move_to(x, y)
         ctx.text_path(self.text)
 
-        
+
 class Group(Element):
     def __init__(self, children, **kw):
         super(Group, self).__init__(**kw)
         self.children = children
+
     def draw(self, ctx):
         ctx.translate(self.x, self.y)
         for e in self.children:
@@ -209,6 +228,9 @@ class TextBox(Group):
         self.b = Box(w, fontsize, **kw)
         super(TextBox, self).__init__([self.b, self.t], x=x, y=y)
 
+    def get_size(self):
+        return self.b.get_size()
+
 
 class TextBoxVList(Group):
     def __init__(self, texts, fontsize, w, **kw):
@@ -216,8 +238,14 @@ class TextBoxVList(Group):
             TextBox(e, fontsize, w, y=i*fontsize) for i,e in enumerate(texts)
         ]
         super(TextBoxVList, self).__init__(ts, **kw)
-        
-        
+
+    def get_size(self):
+        if len(self.children) > 0:
+            w, h = self.children[0].get_size()
+            return w, len(self.children) * h
+        return 0, 0
+
+
 class TextBoxHList(Group):
     def __init__(self, texts, fontsize, w, **kw):
         ts = [
@@ -225,17 +253,32 @@ class TextBoxHList(Group):
         ]
         super(TextBoxHList, self).__init__(ts, **kw)
 
+    def get_size(self):
+        if len(self.children) > 0:
+            w, h = self.children[0].get_size()
+            return w*len(self.children), h
+        return 0, 0
+
         
-class WithTopName(Element):
-    def __init__(self, name, fontsize, body, name_margin=4, **kw):
-        self.top = name_margin + fontsize
+class WithName(Element):
+    def __init__(self, name, fontsize, body, dir=0, **kw):
+        margin = 4
+        w = body.get_size()[0]
+        offsets = (
+            (0, -margin-fontsize),
+            (margin+w/2, 0),
+            (0, margin+fontsize),
+            (-margin - w/2, 0),
+        )
+        self.offset = offsets[dir]
         self.name = Text(name, fontsize)
         self.body = body
-        super(WithTopName, self).__init__(**kw)
+        super(WithName, self).__init__(**kw)
+
     def draw(self, ctx):
-        ctx.translate(self.x, self.y-self.top)
-        self.name.draw(ctx)
-        ctx.translate(0, self.top)
+        ctx.translate(self.x, self.y)
         self.body.draw(ctx)
-        ctx.translate(-self.x, -self.y)
+        ctx.translate(self.offset[0], self.offset[1])
+        self.name.draw(ctx)
+        ctx.translate(-self.x-self.offset[0], -self.y-self.offset[1])
 
