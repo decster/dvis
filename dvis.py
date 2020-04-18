@@ -115,6 +115,9 @@ class Surface:
     def translate(self, x, y):
         self.context.translate(x, y)
 
+    def center(self):
+        self.translate(self.width/2, self.height/2)
+
     def line(self, p0, p1, color=(0, 0, 0)):
         self.context.move_to(*p0)
         self.context.line_to(*p1)
@@ -211,13 +214,13 @@ class Text(Element):
         return self.w, self.h
 
     def draw_contour(self, ctx):
-        print(f'draw text align={self.align}')
+        #print(f'draw text align={self.align}')
         ctx.select_font_face(self.ff)
         ctx.set_font_size(self.fontsize)
         if len(self.text) == 0:
             return
         xbear, ybear, w, h, xadvance, yadvance = ctx.text_extents(self.text)
-        print(f'xbear:{xbear} ybear:{ybear} w:{w} h:{h}')
+        #print(f'xbear:{xbear} ybear:{ybear} w:{w} h:{h}')
         self.w = w
         self.h = h
         if self.align == 'center':

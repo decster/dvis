@@ -4,6 +4,9 @@ from dvis import Surface
 
 
 class History(list):
+    def __init__(self, *args, **kwargs):
+        super(History, self).__init__(*args, **kwargs)
+
     def load(self, fin):
         if isinstance(fin, str):
             fin = open(fin, 'r')
@@ -23,12 +26,15 @@ class History(list):
         fout.close()
 
 
-class Movie():
+class Movie(object):
     def __init__(self, w, h):
         self.width = w
         self.height = h
         self.surface = Surface(w, h)
         self.idx = 0
+
+    def nframe(self):
+        raise Exception('not implemented')
 
     def render(self, idx):
         self.surface.draw_axis()
@@ -41,68 +47,24 @@ class Movie():
 
     def save(self, fname, fps=24):
         self.idx = 0
-        duration = len(self.history) / fps
+        duration = self.nframe() / fps
         clip = mpy.VideoClip(make_frame=self.make_frame, duration=duration)
         if fname.endswith('.gif'):
             clip.write_gif(fname, fps=fps)
         else:
             clip.write_videofile(fname, fps=fps)
 
-from dvis import TextBoxHList, WithName
-import random
 
-def gen_merge_sort(sz):
-    data = list(range(sz))
-    random.shuffle(data)
-    history = []
-    def dump():
-        history.append({'data': data.copy()})
-    def merge(arr, start, mid, end):
-        start2 = mid + 1;
-        if arr[mid] <= arr[start2]:
-            return
-        while start <= mid and start2 <= end:
-            # If element 1 is in right place
-            if arr[start] <= arr[start2]:
-                start += 1
-            else:
-                value = arr[start2]
-                index = start2
-                # Shift all the elements between element 1
-                # element 2, right by 1.
-                while index != start:
-                    arr[index] = arr[index - 1]
-                    index -= 1
-                arr[start] = value
-                start += 1;
-                mid += 1;
-                start2 += 1;
+class MovieWithHistory(Movie):
+    def __init__(self, w, h, history, endstop=4):
+        super(MovieWithHistory, self).__init__(w,  h)
+        self.history = history
+        self.endstop = endstop
 
-    def mergeSort(arr, l, r):
-        if l < r:
-            m = l + (r - l) // 2
-            # Sort first and second halves
-            mergeSort(arr, l, m)
-            mergeSort(arr, m + 1, r)
-            merge(arr, l, m, r)
-            dump()
-    mergeSort(data, 0, len(data)-1)
-    return history
+    def nframe(self):
+        return len(self.history) + self.endstop
 
-
-class SortMovie(Movie):
-    def __init__(self):
-        super(SortMovie, self).__init__(400, 200)
-        self.history = SortMovie.gen_data(10)
-
-    def render(self,idx):
-        if idx >= len(self.history):
-            data = self.history[-1]
-        else:
-            data = self.history[idx]
-        self.surface
-
-
-if __name__ == '__main__':
-    m = Movie(320, 240, [{} for i in range(24)])
-    m.save('test.gif')
+    def save(self, fname, fps=24, json=False):
+        if json:
+            self.history.save(fname+".json")
+        super(MovieWithHistory, self).save(fname, fps=fps)
