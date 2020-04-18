@@ -10,7 +10,7 @@ duration = 4
 fontsize = 30
 eles = [e*13433 % 100 for e in range(N)]
 ts = TextBoxVList(eles, fontsize, 100)
-root = WithName('Demo', fontsize, ts, 2)
+root = WithName('Demo', fontsize, ts, 1)
 
 def makeFrame(t):
     i = int(t/duration * T)

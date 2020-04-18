@@ -3,6 +3,7 @@ from base64 import b64encode
 import numpy as np
 import cairocffi as cairo
 import imageio
+
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -19,7 +20,7 @@ def RGB(c):
     else:
         raise Exception('invalid color')
 
-    
+
 class Surface:
     """
     A Surface is an object on which Elements are drawn, and which can be
@@ -104,21 +105,33 @@ class Surface:
         data = StringIO()
         self.write_to_png(data)
         return data.getvalue()
-    
-    def clear(self, color=(1,1,1)):
+
+    def clear(self, color=(1, 1, 1)):
         self.context.identity_matrix()
-        self.context.rectangle(0,0,self.width,self.height)
+        self.context.rectangle(0, 0, self.width, self.height)
         self.context.set_source_rgb(*color)
         self.context.fill()
 
     def translate(self, x, y):
-        self.context.translate(x,y)
+        self.context.translate(x, y)
+
+    def line(self, p0, p1, color=(0, 0, 0)):
+        self.context.move_to(*p0)
+        self.context.line_to(*p1)
+        self.context.set_line_width(2)
+        self.context.set_source_rgb(*color)
+        self.context.stroke()
+
+    def draw_axis(self):
+        self.context.identity_matrix()
+        self.line((0, self.height / 2), (self.width, self.height / 2))
+        self.line((self.width / 2, 0), (self.width / 2, self.height))
 
     def draw(self, e):
         self.context.save()
         e.draw(self.context)
         self.context.restore()
-    
+
 
 class Element:
     def __init__(self, **kw):
@@ -130,11 +143,11 @@ class Element:
         self.border = kw.get('border', 2)
 
     def get_size(self):
-        return None, None # width, height
+        return None, None  # width, height
 
     def draw_contour(self, ctx):
         pass
-        
+
     def _set_source(self, ctx, src):
         if len(src) == 4:
             ctx.set_source_rgba(*src)
@@ -142,7 +155,7 @@ class Element:
             ctx.set_source_rgb(*src)
 
     def draw(self, ctx):
-        ctx.new_path()
+        ctx.translate(self.x, self.y)
         self.draw_contour(ctx)
         if self.fill:
             self._set_source(ctx, self.fill)
@@ -152,7 +165,7 @@ class Element:
                 ctx.fill()
         if self.border > 0:
             ctx.set_line_width(self.border)
-            self._set_source(ctx, (0,0,0))
+            self._set_source(ctx, (0, 0, 0))
             ctx.stroke()
 
 
@@ -166,7 +179,7 @@ class Box(Element):
         return self.w, self.h
 
     def draw_contour(self, ctx):
-        ctx.rectangle(self.x-self.w/2, self.y-self.h/2, self.w, self.h)
+        ctx.rectangle(self.x - self.w / 2, self.y - self.h / 2, self.w, self.h)
 
 
 class Circle(Element):
@@ -178,12 +191,12 @@ class Circle(Element):
         return self.r * 2, self.r * 2
 
     def draw_contour(self, ctx):
-        ctx.move_to(self.x+self.r,self.y)
-        ctx.arc(self.x,self.y,self.r,0, 2*np.pi)
+        ctx.move_to(self.x + self.r, self.y)
+        ctx.arc(self.x, self.y, self.r, 0, 2 * np.pi)
 
 
 class Text(Element):
-    def __init__(self, text, fontsize, **kw):
+    def __init__(self, text, fontsize, align='center', **kw):
         fill = kw.pop('fill', 0x000000)
         border = kw.pop('border', 0)
         super(Text, self).__init__(fill=fill, border=border, **kw)
@@ -192,18 +205,36 @@ class Text(Element):
         self.fontsize = fontsize
         self.w = 0
         self.h = self.fontsize
+        self.align = align
 
     def get_size(self, ctx):
         return self.w, self.h
 
     def draw_contour(self, ctx):
+        print(f'draw text align={self.align}')
         ctx.select_font_face(self.ff)
         ctx.set_font_size(self.fontsize)
+        if len(self.text) == 0:
+            return
         xbear, ybear, w, h, xadvance, yadvance = ctx.text_extents(self.text)
+        print(f'xbear:{xbear} ybear:{ybear} w:{w} h:{h}')
         self.w = w
         self.h = h
-        x = self.x - w / 2 - xbear
-        y = self.y - h / 2 - ybear
+        if self.align == 'center':
+            x = self.x - w / 2 - xbear
+            y = self.y - h / 2 - ybear
+        elif self.align == 'left':
+            x = self.x - xbear
+            y = self.y - h / 2 - ybear
+        elif self.align == 'right':
+            x = self.x - w - xbear
+            y = self.y - h / 2 - ybear
+        elif self.align == 'top':
+            x = self.x - w / 2 - xbear
+            y = self.y - ybear
+        elif self.align == 'bottom':
+            x = self.x - w / 2 - xbear
+            y = self.y - h - ybear
         ctx.move_to(x, y)
         ctx.text_path(self.text)
 
@@ -212,6 +243,12 @@ class Group(Element):
     def __init__(self, children, **kw):
         super(Group, self).__init__(**kw)
         self.children = children
+
+    def __len__(self):
+        return len(self.children)
+
+    def __getitem__(self, idx):
+        return self.children.__getitem__(idx)
 
     def draw(self, ctx):
         ctx.translate(self.x, self.y)
@@ -234,8 +271,9 @@ class TextBox(Group):
 
 class TextBoxVList(Group):
     def __init__(self, texts, fontsize, w, **kw):
+        yoffset = -(len(texts) - 1) / 2 * fontsize
         ts = [
-            TextBox(e, fontsize, w, y=i*fontsize) for i,e in enumerate(texts)
+            TextBox(e, fontsize, w, y=i * fontsize + yoffset) for i, e in enumerate(texts)
         ]
         super(TextBoxVList, self).__init__(ts, **kw)
 
@@ -248,37 +286,56 @@ class TextBoxVList(Group):
 
 class TextBoxHList(Group):
     def __init__(self, texts, fontsize, w, **kw):
+        xoffset = -(len(texts) - 1) / 2 * w
         ts = [
-            TextBox(e, fontsize, w, x=(i-len(texts)/2.0+0.5)*w) for i,e in enumerate(texts)
+            TextBox(e, fontsize, w, x=i * w + xoffset) for i, e in enumerate(texts)
         ]
         super(TextBoxHList, self).__init__(ts, **kw)
 
     def get_size(self):
         if len(self.children) > 0:
             w, h = self.children[0].get_size()
-            return w*len(self.children), h
+            return w * len(self.children), h
         return 0, 0
 
-        
+
+def align_reverse(align):
+    if align == 'left':
+        return 'right'
+    elif align == 'right':
+        return 'left'
+    elif align == 'top':
+        return 'bottom'
+    elif align == 'bottom':
+        return 'top'
+    return align
+
+
 class WithName(Element):
-    def __init__(self, name, fontsize, body, dir=0, **kw):
-        margin = 4
-        w = body.get_size()[0]
-        offsets = (
-            (0, -margin-fontsize),
-            (margin+w/2, 0),
-            (0, margin+fontsize),
-            (-margin - w/2, 0),
-        )
-        self.offset = offsets[dir]
-        self.name = Text(name, fontsize)
+    def __init__(self, name, fontsize, body, align='top', **kw):
+        self.align = align
+        self.padding = kw.pop('padding', 4)
+        self.name = Text(name, fontsize, align=align_reverse(align), fill=kw.pop('fill', 0))
         self.body = body
         super(WithName, self).__init__(**kw)
 
     def draw(self, ctx):
         ctx.translate(self.x, self.y)
         self.body.draw(ctx)
-        ctx.translate(self.offset[0], self.offset[1])
+        ctx.save()
+        bw, bh = self.body.get_size()
+        if self.align == 'left':
+            ctx.translate(-bw / 2 - self.padding, 0)
+        elif self.align == 'right':
+            ctx.translate(bw / 2 + self.padding, 0)
+        elif self.align == 'top':
+            ctx.translate(0, -bh / 2 - self.padding)
+        elif self.align == 'bottom':
+            ctx.translate(0, bh / 2 + self.padding)
         self.name.draw(ctx)
-        ctx.translate(-self.x-self.offset[0], -self.y-self.offset[1])
+        ctx.restore()
+        ctx.translate(-self.x, -self.y)
+
+    def get_size(self):
+        return self.body.get_size()
 
