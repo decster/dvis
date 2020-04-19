@@ -144,6 +144,6 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         N = int(sys.argv[1])
     m = MergeSortMovie(N)
-    m.save('mergesort.gif', fps=4, json=True)
-    # m = QuickSortMovie(N)
-    # m.save('quicksort.gif', fps=4)
+    m.save('mergesort.mp4', fps=2, json=True)
+    m = QuickSortMovie(N)
+    m.save('quicksort.mp4', fps=2, json=True)
