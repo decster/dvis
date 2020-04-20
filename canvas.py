@@ -1,4 +1,3 @@
-from copy import copy, deepcopy
 from base64 import b64encode
 import numpy as np
 import cairocffi as cairo
@@ -167,7 +166,7 @@ class Canvas:
 
     def text_box(self, x, y, w, h, text, text_size=None, text_color=colors.Black, box_color=colors.White, border=2, border_color=colors.Black):
         ret = self.box(x, y, w, h, color=box_color, border = border, border_color=border_color)
-        if text:
+        if text is not None:
             if text_size is None:
                 text_size = h-2
             self.text(x+w/2, y+h/2, text, text_size, color=text_color)
