@@ -2,6 +2,7 @@ import random
 from canvas import Canvas
 from moviepy.video.io.ffmpeg_writer import FFMPEG_VideoWriter
 
+
 class Clip:
     def __init__(self, w, h, filename, fps):
         self.canvas = Canvas(w, h)
@@ -19,7 +20,6 @@ class Clip:
         self.canvas.clear()
 
 
-
 class MergeSortClip(Clip):
     def __init__(self, N):
         self.bw = 40
@@ -29,6 +29,7 @@ class MergeSortClip(Clip):
 
     def render(self):
         self.canvas.clear()
+
         def box_color(i, text):
             if i < self.pos[0]:
                 return 0xffffff
@@ -44,9 +45,11 @@ class MergeSortClip(Clip):
     def run(self):
         data = self.data
         random.shuffle(data)
+
         def dump(s, p1, p2, e):
             self.pos = (s, p1, p2, e)
             self.step()
+
         def merge(arr, start, mid, end):
             os = start
             start2 = mid + 1
@@ -72,6 +75,7 @@ class MergeSortClip(Clip):
                     start2 += 1
                 dump(s=os, p1=start, p2=start2, e=end)
             dump(s=os, p1=end+1, p2=end+1, e=end)
+
         def mergeSort(arr, l, r):
             m = l + (r - l) // 2
             # Sort first and second halves
@@ -112,9 +116,11 @@ class QuickSortClip(Clip):
         color = self.color
         i = 0
         j = 0
+
         def dump():
             self.ij = (i,j)
             self.step()
+
         def sub_partition(array, start, end):
             pivot = array[start]
             nonlocal i,j
@@ -143,6 +149,7 @@ class QuickSortClip(Clip):
                 color[idx] = 0xffffff
             dump()
             return i - 1
+
         def quicksort(array, start=0, end=None):
             if end - start < 1:
                 return
@@ -156,8 +163,6 @@ class QuickSortClip(Clip):
         self.finish()
 
 
-
 if __name__ == "__main__":
     MergeSortClip(20).run()
     QuickSortClip(20).run()
-    
