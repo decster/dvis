@@ -147,3 +147,7 @@ Spectral = Palette((
 Discrete = Set3
 Diverging = Spectral
 Sequential = YlGnBu
+
+
+def add_alpha(c3, alpha):
+    return c3[0], c3[1], c3[2], alpha

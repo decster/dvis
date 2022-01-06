@@ -77,15 +77,23 @@ class Canvas:
         self.translate(self.width/2, self.height/2)
 
     def _set_source(self, src):
-        if isinstance(src, int):
-            if src > 0xffffff:
-                self.context.set_source_rgba(((src & 0xff000000) >> 24) / 255.0, ((src & 0xff0000) >> 16) / 255.0, ((src & 0xff00) >> 8) / 255.0, (src & 0xff) / 255.0)
-            else:
-                self.context.set_source_rgb(((src & 0xff0000) >> 16) / 255.0, ((src & 0xff00) >> 8) / 255.0, (src & 0xff) / 255.0)
-        elif len(src) == 4:
+        if isinstance(src, str):
+            if len(src) == 3:
+                src = (int(src[0], 16)/15, int(src[1], 16)/15, int(src[2], 16)/15)
+            elif len(src) == 4:
+                src = (int(src[0], 16)/15, int(src[1], 16)/15, int(src[2], 16)/15, int(src[3], 16)/15)
+            elif len(src) == 6:
+                src = (int(src[0:2], 16)/255, int(src[2:4], 16)/255, int(src[4:6], 16)/255)
+            elif len(src) == 8:
+                src = (int(src[0:2], 16)/255, int(src[2:4], 16)/255, int(src[4:6], 16)/255, int(src[6:8], 16)/255)
+        elif isinstance(src, int) and src < 0xffffff:
+            src = ((src & 0xff0000) >> 16) / 255.0, ((src & 0xff00) >> 8) / 255.0, (src & 0xff) / 255.0
+        if len(src) == 4:
             self.context.set_source_rgba(*src)
         elif len(src) == 3:
             self.context.set_source_rgb(*src)
+        else:
+            raise Exception(f'bad color format: {src}')
 
     def clear(self, color=colors.White):
         self.context.identity_matrix()
