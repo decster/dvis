@@ -72,6 +72,9 @@ class Canvas:
     def translate(self, x, y):
         self.context.translate(x, y)
 
+    def reset_translate(self):
+        self.context.identity_matrix()
+
     def center(self):
         self.context.identity_matrix()
         self.translate(self.width/2, self.height/2)
