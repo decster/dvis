@@ -1,4 +1,5 @@
 import random
+import math
 import sys
 from canvas import Canvas
 from clip import Clip
@@ -127,7 +128,7 @@ class HT:
         self.assigns = assigns
 
     def get_subpage_poses(self):
-        pages = self.subpage_packs;
+        pages = self.subpage_packs
         # [[(dest_pid, cpos, len)]]
         poses = [[(0,0,0)]*16 for i in range(len(pages))]
         for dpid in range(len(self.subpage_packs)):
@@ -150,6 +151,15 @@ class HT:
         if self.moved_item and self.moved_item > 0:
             ret += f' move: {self.moved_item}/{self.nele} {self.moved_item/self.nele:.4f}'
         return ret
+
+    def page_sizes(self):
+        poses = self.get_subpage_poses()
+        szs = [0] * self.npage
+        for pid in range(self.npage):
+            for subpid in range(16):
+                dpid, cpos, l = poses[pid][subpid]
+                szs[dpid] = max(szs[dpid], cpos+l)
+        return szs
 
     def render(self, canvas=None):
         page_h = 4
@@ -207,8 +217,59 @@ class PHDBClip(Clip):
         self.finish()
 
 
+class LevelPHDBSim(Clip):
+    def __init__(self, path):
+        self.l0 = 0
+        self.l1 = 0
+        super(LevelPHDBSim, self).__init__(1200, 160, path, 4)
+
+    def add(self, a):
+        self.l0 += a
+
+    def try_compact(self):
+        if self.l0 > 16 and self.l0 * 4 > self.l1:
+            self.l1 += self.l0
+            self.l0 = 0
+            return True
+        return False
+
+    def shards(self):
+        n = self.l1 // 16
+        if n > 0:
+            l = math.floor(math.log2(n))
+            nshard = 1 << l
+        else:
+            nshard = 1
+        return self.l1 // nshard, nshard
+
+    def render(self):
+        self.canvas.clear()
+        self.canvas.text(5, 30, 'L0', 20, align='left')
+        self.canvas.text(5, 130, 'L1', 20, align='left')
+        self.canvas.translate(40, 10)
+        self.canvas.box(0, 0, self.l0, 40, Set3[1])
+        self.canvas.text(self.l0 + 10, 20, f'size:{self.l0/16:.1f}M', 20, align='left')
+        self.canvas.box(0, 50, self.l0, 40, Set3[0])
+        shardlen, nshard = self.shards()
+        if shardlen > 0:
+            texts = [f'{shardlen/16:.1f}'] * nshard
+            self.canvas.text_box_list(0, 100, shardlen, 40, texts, 'h', text_size=12, box_color=Set3[0])
+            self.canvas.text(self.l1 + 10, 120, f'size:{self.l1/16:.1f}M shard:{nshard}', 20, align='left')
+
+    def run(self):
+        self.step()
+        for i in range(125):
+            self.add(8)
+            self.step()
+            if self.try_compact():
+                self.step()
+        self.wait(2)
+        self.finish()
+
+
 if __name__ == "__main__":
     path = None
     if len(sys.argv) > 1:
         path = sys.argv[1]
+    #LevelPHDBSim(path).run()
     PHDBClip(20, 1024*1024, 0.87, path=path).run()
