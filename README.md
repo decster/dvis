@@ -10,6 +10,9 @@ mergesort
 
 https://user-images.githubusercontent.com/193300/148338448-f91619ad-caa3-4855-a788-baa249b8082e.mp4
 
+LSM animation using trace log from [leveldb](https://github.com/google/leveldb)
+
+https://user-images.githubusercontent.com/193300/149301266-0fe4259f-4e89-45bc-88fa-57827d054392.mp4
 
 
 ## Dependencies
