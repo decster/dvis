@@ -12,8 +12,13 @@ https://user-images.githubusercontent.com/193300/148338448-f91619ad-caa3-4855-a7
 
 LSM animation using trace log from [leveldb](https://github.com/google/leveldb)
 
-https://user-images.githubusercontent.com/193300/149301266-0fe4259f-4e89-45bc-88fa-57827d054392.mp4
+random insert values
 
+https://user-images.githubusercontent.com/193300/149475849-17fbc527-c66f-4fab-9b73-9a6a69e98026.mp4
+
+timeseries insert values
+
+https://user-images.githubusercontent.com/193300/149475885-8a3870e7-ba29-4e0c-8888-199c68515fb1.mp4
 
 ## Dependencies
 
